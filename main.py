@@ -1,4 +1,4 @@
-# Student ID: <012494418>  ← replace with YOUR WGU ID
+# Student ID: <012494418>
 # Entry point & simple console UI.
 
 import os
@@ -24,7 +24,7 @@ def ensure_data_files():
 def build_package_table(packages, distance_table):
     """
     Build a hash table keyed by package_id → Package object.
-    We also attach address indices for fast distance lookup.
+    Also attach address indices for fast distance lookup.
     """
     ht = HashTable()
     for p in packages:
@@ -46,13 +46,20 @@ def main():
     packages = load_packages(pf_path)
     package_table = build_package_table(packages, D)
 
+    # Optional: show any addresses that didn't match at load time
+    unmatched = [p.package_id for _, p in package_table.items() if p.address_index < 0]
+    if unmatched:
+        print("NOTE: These package IDs did not match a distance-table address initially "
+              "(they will be handled by the router if/when eligible):")
+        print("   ", ", ".join(map(str, unmatched)))
+
     # ---- Plan & simulate ----------------------------------------------------
     router = Router(D, package_table)
     print("Planning and simulating routes...")
     router.plan_and_simulate()
     print(f"Total mileage (all trucks): {router.total_miles:.2f} miles")
 
-    # ---- Quick menu for screenshots required by rubric ---------------------
+    # ---- Menu ---------------------------------------------------------------
     while True:
         print("\nMenu:")
         print("1) Total mileage + delivered count")
@@ -66,6 +73,7 @@ def main():
 
         if choice == "0":
             break
+
         elif choice == "1":
             delivered = sum(
                 1 for _, p in package_table.items()
@@ -74,6 +82,7 @@ def main():
             print(f"Delivered: {delivered}/40; Total miles: {router.total_miles:.2f}")
 
         elif choice in {"2", "3", "4", "5"}:
+            # Determine the time to show
             if choice == "2":
                 when = START_TIME.replace(hour=9, minute=0)
             elif choice == "3":
@@ -89,8 +98,9 @@ def main():
                     print("Invalid time. Use HH:MM, e.g., 09:15")
                     continue
 
-            # Use the router's status snapshot helper (prints grouped by truck)
+            # Print EXACTLY ONCE, then pause for screenshots
             router.print_statuses_at(when)
+            input("\nPress Enter to return to the menu...")
 
         elif choice == "6":
             try:
