@@ -20,6 +20,7 @@ class Package:
 
         # runtime fields
         self.status = "At Hub"
+        self.time_loaded = None          # <— router uses this
         self.time_delivered = None
         self.truck_id = None
 
@@ -49,6 +50,9 @@ class Package:
             if 0 <= hh < 24 and 0 <= mm < 60:
                 return datetime.combine(datetime.today().date(), time(hh, mm))
         return datetime.combine(datetime.today().date(), time(23, 59))
+
+    def __repr__(self):
+        return f"Package({self.package_id}, '{self.address}', '{self.deadline}', idx={self.address_index})"
 
 
 class Truck:
