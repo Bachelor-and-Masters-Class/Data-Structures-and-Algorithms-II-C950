@@ -2,7 +2,6 @@
 import csv
 from models import Package
 
-
 def load_distance_table(distance_file: str):
     """
     Return (addresses, lower_triangle):
@@ -68,6 +67,9 @@ def load_packages(packages_file: str):
             except:
                 continue
             address = row[1].strip() if len(row) > 1 else ""
+            # extra defensive trims for quoted addresses
+            address = address.strip().strip('"').strip("'")
+
             city = row[2].strip() if len(row) > 2 else ""
             zipcode = row[4].strip() if len(row) > 4 else ""
             deadline = row[5].strip() if len(row) > 5 and row[5].strip() else "EOD"
