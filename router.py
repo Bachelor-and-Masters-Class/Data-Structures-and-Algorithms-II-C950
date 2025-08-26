@@ -20,6 +20,9 @@ MUST_GROUPS = [
     {14, 15, 19},       # explicitly mentioned by evaluator
 ]
 
+# “Only Truck 2” constraint (CSV notes)
+ONLY_TRUCK2 = {3, 18, 36, 38}
+
 # Quick lookup: pid -> group set
 PID_TO_GROUP = {}
 for g in MUST_GROUPS:
@@ -39,7 +42,7 @@ class Router:
         self.trucks = [Truck("Truck 1"), Truck("Truck 2"), Truck("Truck 3")]
         self.total_miles = 0.0
 
-        # NEW: gate Truck 2 so it cannot depart before 09:05 (to protect #25 deadline)
+        # Gate Truck 2 so it cannot depart before 09:05 (to protect #25 deadline)
         self.truck_not_before = {"Truck 2": time(9, 5)}
 
     # ------------------------- helpers -----------------------------------
@@ -72,13 +75,14 @@ class Router:
           - 9:05 flight delays (pids in DELAYED_UNTIL_905)
           - pkg #9 bad address until 10:20
           - must-deliver-together sets in MUST_GROUPS
+          - ONLY_TRUCK2 constraint
           - capacity limit
         Packages are chosen in deadline-first order.
         """
         truck.packages.clear()
         now = truck.clock
 
-        # NEW: respect per-truck "not before" departure times (e.g., Truck 2 @ 09:05)
+        # respect per-truck "not before" departure times (e.g., Truck 2 @ 09:05)
         nb = self.truck_not_before.get(truck.truck_id)
         if nb:
             gate = datetime.combine(now.date(), nb)
@@ -87,12 +91,16 @@ class Router:
 
         # Can we legally take this package *now*?
         def is_available(pkg):
-            # 9:05 flight delay (regardless of free-text notes)
+            # 9:05 flight delay
             if pkg.package_id in DELAYED_UNTIL_905:
                 if now < datetime.combine(now.date(), time(9, 5)):
                     return False
 
-            # #9 address correction at 10:20
+            # Only Truck 2 allowed
+            if pkg.package_id in ONLY_TRUCK2 and truck.truck_id != "Truck 2":
+                return False
+
+            # #9 address correction at 10:20 — cannot even load before unlock
             if pkg.package_id == ADDRESS_FIX_1020_ID:
                 unlock = datetime.combine(now.date(), ADDRESS_FIX_1020)
                 if now < unlock:
@@ -186,7 +194,7 @@ class Router:
 
     def _deliver_run(self, truck, to_deliver):
         """Perform a deadline-aware tour for the loaded packages."""
-        current = truck.location
+        current = truck.location  # index
         remaining = to_deliver[:]
         while remaining:
             next_pkg, dist = self._nearest_deadline_first(current, remaining, truck.clock)
@@ -195,8 +203,7 @@ class Router:
 
             # travel (ensure some time passes even for zero/near-zero distance)
             if dist is None or dist <= 1e-9:
-                # simulate 1-minute handling time even if we're already at that stop
-                truck.clock += timedelta(minutes=1)
+                truck.clock += timedelta(minutes=1)  # handling time if already at stop
             else:
                 truck.travel(dist)
                 self.total_miles += dist
@@ -204,13 +211,31 @@ class Router:
             current = next_pkg.address_index
             truck.set_location(current)
 
-            # --- ensure pkg #9 delivery is AFTER the 10:20 unlock ---
+            # --- ensure pkg #9 delivery is FEASIBLE after 10:20 with real travel ---
             if next_pkg.package_id == ADDRESS_FIX_1020_ID:
                 unlock = datetime.combine(truck.clock.date(), ADDRESS_FIX_1020)
+                # If we reached a location before the unlock, wait until 10:20,
+                # then travel to the CORRECT address if not already there.
                 if truck.clock < unlock:
-                    # Arrived before we even know the correct address? Wait until 10:20.
                     truck.clock = unlock
-                # Add small handling time so it's clearly after unlock (e.g., 10:21)
+
+                # Make sure corrected address and index are set
+                if "410 S State St" not in (next_pkg.address or ""):
+                    next_pkg.address = "410 S State St"
+                corrected_idx = self.D.index_of(next_pkg.address)
+
+                # If we're not at the corrected address, go there now
+                if corrected_idx is not None and corrected_idx >= 0 and corrected_idx != current:
+                    hop = self._distance(current, corrected_idx)
+                    if hop is None or hop <= 1e-9:
+                        truck.clock += timedelta(minutes=1)
+                    else:
+                        truck.travel(hop)
+                        self.total_miles += hop
+                    current = corrected_idx
+                    truck.set_location(current)
+
+                # small handling time so delivery time is clearly after unlock
                 truck.clock += timedelta(minutes=1)
 
             # deliver
