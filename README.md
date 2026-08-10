@@ -1,6 +1,6 @@
 **Overview**
 
-This repository contains my completed submission for the WGU course **C950 – Data Structures and Algorithms II**: the WGUPS Routing Program.
+This repository contains my completed submission for the WGU course **C950: Data Structures and Algorithms II**: the WGUPS Routing Program.
 
 The project implements a package delivery routing system for the Western Governors University Parcel Service (WGUPS). The program loads a set of 40 packages and a distance matrix of delivery addresses, assigns packages to trucks under a set of real-world constraints, and determines an efficient delivery route while keeping total mileage under the required threshold.
 
@@ -96,18 +96,18 @@ The program expects `WGUPS_Distance_Table.csv` and `WGUPS_Package_File.csv` to b
 
 **Repository Contents**
 
--`main.py` – Program entry point and console menu
+-`main.py`: Program entry point and console menu
 
--`hash_table.py` – Custom hash table implementation
+-`hash_table.py`: Custom hash table implementation
 
--`router.py` – Routing algorithm, truck loading, and delivery simulation
+-`router.py`: Routing algorithm, truck loading, and delivery simulation
 
--`distance.py` – Distance matrix handling and address resolution
+-`distance.py`: Distance matrix handling and address resolution
 
--`models.py` – Package and truck data models
+-`models.py`: Package and truck data models
 
--`data_loader.py` – CSV parsing and object construction
+-`data_loader.py`: CSV parsing and object construction
 
--`ui.py` – Status display and reporting helpers
+-`ui.py`: Status display and reporting helpers
 
--`data/` – Source CSV files for packages and distances
+-`data/`: Source CSV files for packages and distances
